@@ -52,3 +52,46 @@ RUN set -ex \
 
 RUN pip install -U platformio \
     && platformio platform install https://github.com/joscha/platform-sodaqsamd.git
+
+
+
+ENV PROTOBUF_VERSION 3.2.0
+
+RUN set -ex \
+  && apt-get update \
+  && apt-get install -y \
+    autoconf \
+    automake \
+    libtool \
+    curl \
+    make \
+    g++ \
+    git \
+    unzip \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN set -ex \
+  && git clone --branch "v${PROTOBUF_VERSION}" --depth 1 https://github.com/google/protobuf.git \
+  && cd protobuf \
+  && ./autogen.sh \
+  && ./configure \
+  && make \
+  && make check \
+  && make install \
+  && ldconfig \
+  && cd ..
+
+ENV NANOPB_REV 90c7269b634845a6318a7969a600d800aae70e1d
+
+RUN set -ex \
+  && git clone https://github.com/nanopb/nanopb.git \
+  && cd nanopb \
+  && git checkout "${NANOPB_REV}" \
+  && cd generator/proto \
+  && make \
+  && cd ../../.. \
+  && pip install -U protobuf=="${PROTOBUF_VERSION}"
+
+ENV PATH /nanopb/generator:$PATH
+
+RUN yarn add global protobufjs
