@@ -22,8 +22,7 @@ RUN set -ex \
     gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
   done
 
-ENV NPM_CONFIG_LOGLEVEL info
-ENV NODE_VERSION 7.7.2
+ENV NODE_VERSION 7.8.0
 
 RUN curl -SLO "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.xz" \
   && curl -SLO "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc" \
@@ -33,7 +32,7 @@ RUN curl -SLO "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-
   && rm "node-v$NODE_VERSION-linux-x64.tar.xz" SHASUMS256.txt.asc SHASUMS256.txt \
   && ln -s /usr/local/bin/node /usr/local/bin/nodejs
 
-ENV YARN_VERSION 0.21.3
+ENV YARN_VERSION 0.22.0
 
 RUN set -ex \
   && for key in \
@@ -50,10 +49,12 @@ RUN set -ex \
 
 # --- End from https://github.com/nodejs/docker-node/blob/master/7.7/Dockerfile ---
 
-RUN pip install -U platformio \
-    && platformio platform install https://github.com/joscha/platform-sodaqsamd.git
+ENV PLATFORMIO_VERSION 3.3.0
 
-
+RUN pip install -U platformio=="${PLATFORMIO_VERSION}" \
+    && platformio upgrade \
+    && platformio update \
+    && platformio platform install https://github.com/platformio/platform-atmelsam.git
 
 ENV PROTOBUF_VERSION 3.2.0
 
@@ -81,7 +82,7 @@ RUN set -ex \
   && ldconfig \
   && cd ..
 
-ENV NANOPB_REV 90c7269b634845a6318a7969a600d800aae70e1d
+ENV NANOPB_REV 651bdc45f2180b17c132470ff1a3a515dbffaa78
 
 RUN set -ex \
   && git clone https://github.com/nanopb/nanopb.git \
@@ -94,4 +95,6 @@ RUN set -ex \
 
 ENV PATH /nanopb/generator:$PATH
 
-RUN yarn add global protobufjs
+ENV PROTOBUF_JS_VERSION 6.7.3
+
+RUN yarn add global protobufjs@"${PROTOBUF_JS_VERSION}"
