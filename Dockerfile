@@ -3,8 +3,6 @@ MAINTAINER Joscha Feth <joscha@feth.com>
 
 # --- Begin from https://github.com/nodejs/docker-node/blob/master/8.5/Dockerfile ---
 
-FROM buildpack-deps:jessie
-
 RUN groupadd --gid 1000 node \
   && useradd --uid 1000 --gid node --shell /bin/bash --create-home node
 
