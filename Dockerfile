@@ -98,6 +98,7 @@ RUN set -ex \
   && cd ..
 
 ENV NANOPB_REV 0fada5b8534da5c69a598aa465db1fe16b6cc6ef
+ENV PROTOBUF_PYTHON_VERSION 3.4.0
 
 RUN set -ex \
   && git clone https://github.com/nanopb/nanopb.git \
@@ -106,7 +107,7 @@ RUN set -ex \
   && cd generator/proto \
   && make \
   && cd ../../.. \
-  && pip install -U protobuf=="${PROTOBUF_VERSION}"
+  && pip install -U protobuf=="${PROTOBUF_PYTHON_VERSION}"
 
 ENV PATH /nanopb/generator:$PATH
 
