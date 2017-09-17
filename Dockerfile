@@ -112,4 +112,4 @@ ENV PATH /nanopb/generator:$PATH
 
 ENV PROTOBUF_JS_VERSION 6.8.0
 
-RUN yarn add global protobufjs@"${PROTOBUF_JS_VERSION}"
+RUN yarn global add protobufjs@"${PROTOBUF_JS_VERSION}"
