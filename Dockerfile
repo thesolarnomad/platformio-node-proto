@@ -1,17 +1,18 @@
 FROM python:2.7
 MAINTAINER Joscha Feth <joscha@feth.com>
 
-# --- Begin from https://github.com/nodejs/docker-node/blob/master/7.7/Dockerfile ---
+# --- Begin from https://github.com/nodejs/docker-node/blob/master/8.5/Dockerfile ---
+
+FROM buildpack-deps:jessie
 
 RUN groupadd --gid 1000 node \
   && useradd --uid 1000 --gid node --shell /bin/bash --create-home node
 
-# gpg keys listed at https://github.com/nodejs/node
+# gpg keys listed at https://github.com/nodejs/node#release-team
 RUN set -ex \
   && for key in \
     9554F04D7259F04124DE6B476D5A82AC7E37093B \
     94AE36675C464D64BAFA68DD7434390BDBE9B9C5 \
-    0034A06D9D9B0064CE8ADF6BF1747F4AD2306D93 \
     FD3A5288F042B6850C66B31F09FE44734EB7990E \
     71DCFD284A79C3B38668286BC97EC7A07EDE3FC1 \
     DD8F2338BAE7501E3DD5AC78C273792F7D83545D \
@@ -19,44 +20,60 @@ RUN set -ex \
     C4F0DFFF4E8C1A8236409D08E73BC641CC11F4C8 \
     56730D5401028683275BD23C23EFEFE93C4CFFFE \
   ; do \
-    gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
+    gpg --keyserver pgp.mit.edu --recv-keys "$key" || \
+    gpg --keyserver keyserver.pgp.com --recv-keys "$key" || \
+    gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key" ; \
   done
 
-ENV NODE_VERSION 7.8.0
+ENV NPM_CONFIG_LOGLEVEL info
+ENV NODE_VERSION 8.5.0
 
-RUN curl -SLO "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.xz" \
-  && curl -SLO "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc" \
+RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
+  && case "${dpkgArch##*-}" in \
+    amd64) ARCH='x64';; \
+    ppc64el) ARCH='ppc64le';; \
+    s390x) ARCH='s390x';; \
+    arm64) ARCH='arm64';; \
+    armhf) ARCH='armv7l';; \
+    *) echo "unsupported architecture"; exit 1 ;; \
+  esac \
+  && curl -SLO "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-$ARCH.tar.xz" \
+  && curl -SLO --compressed "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc" \
   && gpg --batch --decrypt --output SHASUMS256.txt SHASUMS256.txt.asc \
-  && grep " node-v$NODE_VERSION-linux-x64.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
-  && tar -xJf "node-v$NODE_VERSION-linux-x64.tar.xz" -C /usr/local --strip-components=1 \
-  && rm "node-v$NODE_VERSION-linux-x64.tar.xz" SHASUMS256.txt.asc SHASUMS256.txt \
+  && grep " node-v$NODE_VERSION-linux-$ARCH.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
+  && tar -xJf "node-v$NODE_VERSION-linux-$ARCH.tar.xz" -C /usr/local --strip-components=1 \
+  && rm "node-v$NODE_VERSION-linux-$ARCH.tar.xz" SHASUMS256.txt.asc SHASUMS256.txt \
   && ln -s /usr/local/bin/node /usr/local/bin/nodejs
 
-ENV YARN_VERSION 0.22.0
+ENV YARN_VERSION 1.0.2
 
 RUN set -ex \
   && for key in \
     6A010C5166006599AA17F08146C2130DFD2497F5 \
   ; do \
-    gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
+    gpg --keyserver pgp.mit.edu --recv-keys "$key" || \
+    gpg --keyserver keyserver.pgp.com --recv-keys "$key" || \
+    gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$key" ; \
   done \
-  && curl -fSL -o yarn.js "https://yarnpkg.com/downloads/$YARN_VERSION/yarn-legacy-$YARN_VERSION.js" \
-  && curl -fSL -o yarn.js.asc "https://yarnpkg.com/downloads/$YARN_VERSION/yarn-legacy-$YARN_VERSION.js.asc" \
-  && gpg --batch --verify yarn.js.asc yarn.js \
-  && rm yarn.js.asc \
-  && mv yarn.js /usr/local/bin/yarn \
-  && chmod +x /usr/local/bin/yarn
+  && curl -fSLO --compressed "https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz" \
+  && curl -fSLO --compressed "https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz.asc" \
+  && gpg --batch --verify yarn-v$YARN_VERSION.tar.gz.asc yarn-v$YARN_VERSION.tar.gz \
+  && mkdir -p /opt/yarn \
+  && tar -xzf yarn-v$YARN_VERSION.tar.gz -C /opt/yarn --strip-components=1 \
+  && ln -s /opt/yarn/bin/yarn /usr/local/bin/yarn \
+  && ln -s /opt/yarn/bin/yarn /usr/local/bin/yarnpkg \
+  && rm yarn-v$YARN_VERSION.tar.gz.asc yarn-v$YARN_VERSION.tar.gz
 
-# --- End from https://github.com/nodejs/docker-node/blob/master/7.7/Dockerfile ---
+# --- End from https://github.com/nodejs/docker-node/blob/master/8.5/Dockerfile ---
 
-ENV PLATFORMIO_VERSION 3.3.0
+ENV PLATFORMIO_VERSION 3.4.1
 
 RUN pip install -U platformio=="${PLATFORMIO_VERSION}" \
     && platformio upgrade \
     && platformio update \
-    && platformio platform install https://github.com/platformio/platform-atmelsam.git
+    && platformio platform install atmelsam
 
-ENV PROTOBUF_VERSION 3.2.0
+ENV PROTOBUF_VERSION 3.4.1
 
 RUN set -ex \
   && apt-get update \
@@ -82,7 +99,7 @@ RUN set -ex \
   && ldconfig \
   && cd ..
 
-ENV NANOPB_REV 651bdc45f2180b17c132470ff1a3a515dbffaa78
+ENV NANOPB_REV 0fada5b8534da5c69a598aa465db1fe16b6cc6ef
 
 RUN set -ex \
   && git clone https://github.com/nanopb/nanopb.git \
@@ -95,6 +112,6 @@ RUN set -ex \
 
 ENV PATH /nanopb/generator:$PATH
 
-ENV PROTOBUF_JS_VERSION 6.7.3
+ENV PROTOBUF_JS_VERSION 6.8.0
 
 RUN yarn add global protobufjs@"${PROTOBUF_JS_VERSION}"
